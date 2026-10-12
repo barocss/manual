@@ -54,6 +54,8 @@ jobs:
         env:
           BAROCSS_DOCS_BASE: /manual/
         run: pnpm --filter @barocss/library-docs build
+      - name: Verify Manual base paths and served assets
+        run: node apps/library-docs/scripts/check-base-path.mjs /manual/
       - name: Record deployment source
         env:
           SOURCE_SHA: ${{ inputs.source_sha }}
