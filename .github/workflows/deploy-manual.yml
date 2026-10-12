@@ -1,0 +1,84 @@
+name: Deploy Manual to Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Validated full commit SHA from barocss/barocss'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate immutable source selection
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "A full lowercase source commit SHA is required"; exit 1; }
+      - name: Checkout validated public Manual source
+        uses: actions/checkout@v6
+        with:
+          repository: barocss/barocss
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify checked-out source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check documentation
+        run: |
+          pnpm --filter @barocss/library-docs check:docs
+          pnpm --filter @barocss/library-docs check:api
+      - name: Build Manual
+        env:
+          BAROCSS_DOCS_BASE: /manual/
+        run: pnpm --filter @barocss/library-docs build
+      - name: Record deployment source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          node --input-type=module -e 'import { writeFileSync } from "node:fs"; writeFileSync("apps/library-docs/docs/.vitepress/dist/deployment.json", JSON.stringify({repository:"barocss/barocss",sourceCommit:process.env.SOURCE_SHA,base:"/manual/",workflowRun:process.env.GITHUB_RUN_ID},null,2)+"\n")'
+          printf 'Source: https://github.com/barocss/barocss/commit/%s\n' "$SOURCE_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Manual artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/library-docs/docs/.vitepress/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Manual
+        id: deployment
+        uses: actions/deploy-pages@v4
