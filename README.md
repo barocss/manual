@@ -9,7 +9,7 @@ This repository hosts the BaroCSS Libraries manual on GitHub Pages. Documentatio
 3. Enter the complete, validated 40-character source commit SHA in `source_sha`.
 4. Wait for both build and deploy jobs to pass, then check the site and `/manual/deployment.json` for the exact source commit.
 
-No floating source branch is published automatically. The workflow fetches public source with full Git history (required by the manual's pinned-source and provenance checks), installs the lockfile with pnpm, runs documentation/API checks, builds `@barocss/library-docs`, and publishes only its `.vitepress/dist` artifact. It uses this repository's standard `GITHUB_TOKEN`; no cross-repository secret or personal access token is needed.
+No floating source branch is published automatically. The workflow fetches public source with full Git history (required by the manual's pinned-source and provenance checks), installs the lockfile with pnpm, builds `@barocss/library-docs`, checks documentation provenance and built base-path links, and publishes only its `.vitepress/dist` artifact. It uses this repository's standard `GITHUB_TOKEN`; no cross-repository secret or personal access token is needed.
 
 Site URL after successful deployment: https://barocss.github.io/manual/
 
@@ -20,3 +20,9 @@ The initial build uses `BAROCSS_DOCS_BASE=/manual/`. This repository does not de
 A switch to `manual.barocss.com` must be coordinated with a build-base change to `/` and verified separately. Verify domain ownership first. Add the custom domain in this repository's Pages settings before creating the DNS CNAME `manual` pointing to `barocss.github.io` (no repository path). Wait for DNS/certificate readiness, enforce HTTPS, and check the live site. GitHub Actions Pages deployments do not need a `CNAME` artifact file.
 
 [GitHub custom-domain documentation](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+
+## Verification scope
+
+The manual intentionally preserves historical API/runtime source profiles, principally `5f5ad866205a21510ac69552e704cc162fa253b5`, alongside separately reviewed current manifest metadata. Deployment checks validate that documented snapshot, its source/manifest provenance, and generated site paths; they do not establish coverage of every API in current `develop`.
+
+During initial setup, [run 2](https://github.com/barocss/manual/actions/runs/38188392623) passed the build and documentation checks but failed `check:api`: that command compares current workspace declarations with the historical API baseline and found added/changed exports. It has no pinned-snapshot mode. This current-API drift remains a separate documentation coverage gap, not a passed check. The deployment workflow therefore does not use that comparison as a snapshot publication gate. The source baseline was not regenerated or changed.
