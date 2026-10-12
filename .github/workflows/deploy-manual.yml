@@ -46,14 +46,14 @@ jobs:
           version: 9
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
-      - name: Check documentation
-        run: |
-          pnpm --filter @barocss/library-docs check:docs
-          pnpm --filter @barocss/library-docs check:api
       - name: Build Manual
         env:
           BAROCSS_DOCS_BASE: /manual/
         run: pnpm --filter @barocss/library-docs build
+      - name: Check documentation
+        run: |
+          pnpm --filter @barocss/library-docs check:docs
+          pnpm --filter @barocss/library-docs check:api
       - name: Verify Manual base paths and served assets
         run: node apps/library-docs/scripts/check-base-path.mjs /manual/
       - name: Record deployment source
